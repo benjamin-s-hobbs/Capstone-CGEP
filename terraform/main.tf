@@ -337,7 +337,6 @@ resource "aws_s3_bucket_policy" "vault" {
       }
     },
     { 
-    Statement = [{
         Sid       = "EnforceSecureTransport"
         Effect    = "Deny"
         Principal = "*"
@@ -351,8 +350,8 @@ resource "aws_s3_bucket_policy" "vault" {
             "aws:SecureTransport" = "false"
           }
         }
-      }]
-    }]
+      }   
+    ]
   })
 }
 resource "aws_s3_bucket_policy" "vault" {
