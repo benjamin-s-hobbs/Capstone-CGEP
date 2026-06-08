@@ -97,7 +97,6 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           tfsec . --format sarif --out ../evidence/tfsec.sarif || true
-          # Only fail the job on HIGH or CRITICAL findings.
           python3 -c '
           import json, sys
           d = json.load(open("../evidence/tfsec.sarif"))
