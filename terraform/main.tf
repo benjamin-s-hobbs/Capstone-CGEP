@@ -117,7 +117,7 @@ resource "aws_kms_key" "key" {
 }
 # AWS "Aliases" allows for custom naming conventions
 resource "aws_kms_alias" "key" {
-  name          = "alias/${local.key_id}"
+  name      = "alias/${local.key_id}"
   target_key_id = aws_kms_key.key.key_id
 }
 
