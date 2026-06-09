@@ -507,7 +507,7 @@ resource "aws_lambda_function" "intake" {
     # Using the Private Subnet for Lambda 
     # (resource added with the help of AI system: "Gemini Pro 3.1")
     subnet_ids         = [aws_subnet.private[count.index]]
-    security_group_ids = [aws_security_group.lambda_sg.[count.index]]
+    security_group_ids = [aws_security_group.lambda_sg[count.index]]
   }
 }
 
