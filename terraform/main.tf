@@ -117,7 +117,7 @@ resource "aws_kms_key" "key" {
 }
 # AWS "Aliases" allows for custom naming conventions
 resource "aws_kms_alias" "key" {
-  name      = "alias/${local.key_id}"
+  name          = "alias/${local.key_id}"
   target_key_id = aws_kms_key.key.key_id
 }
 
@@ -127,7 +127,7 @@ resource "aws_kms_alias" "key" {
 ######################################################################
 
 resource "aws_dynamodb_table" "intake" {
-  name         = local.table_name.id
+  name         = "local.table_name.id"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "submission_id"
 
@@ -355,7 +355,6 @@ resource "aws_s3_bucket_policy" "vault" {
   })
 }
 
-
 # (Intentionally omitted: SSE-KMS encryption with a customer CMK,
 #  bucket policy enforcing aws:SecureTransport, lifecycle.
 #  These are the gaps the learner closes.)
@@ -489,6 +488,8 @@ resource "aws_lambda_function" "intake" {
       INTAKE_TABLE  = aws_dynamodb_table.intake.name
       UPLOAD_BUCKET = aws_s3_bucket.uploads.id
     }
+
+
   }
   tracing_config {
     mode = "Active"
@@ -505,10 +506,34 @@ resource "aws_lambda_function" "intake" {
   vpc_config {
     # Using the Private Subnet for Lambda 
     # (resource added with the help of AI system: "Gemini Pro 3.1")
-    subnet_ids         = [aws_subnet.private.id]
+    subnet_ids         = [aws_subnet.private[count.index]]
     security_group_ids = [aws_security_group.lambda_sg.id]
   }
 }
+
+resource "aws_security_group" "lambda_sg" {
+  name        = "${local.name_prefix}-lambda-sg-${local.suffix}"
+  description = "Security group for the Intake Lambda function"
+  
+  # Make sure to update this to point to your actual VPC resource ID!
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  
+  
+  # Outbound rule: Allows the Lambda function to make outbound network calls 
+  # (e.g., to internet endpoints, databases, or other AWS services).
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1" # "-1" means all protocols
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${local.name_prefix}-lambda-sg-${local.suffix}"
+  }
+}
+
 resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
   role       = aws_iam_role.lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
@@ -573,12 +598,6 @@ resource "aws_api_gateway_deployment" "intake" {
   lifecycle {
     create_before_destroy = true
   }
-}
-
-resource "aws_apigatewayv2_route" "intake" {
-  api_id    = aws_apigatewayv2_api.intake.id
-  route_key = "POST /intake"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_api_gateway_stage" "prod" {
