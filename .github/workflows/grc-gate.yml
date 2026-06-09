@@ -29,16 +29,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@72f2cec99f417b1a1c5e2e88945068983b7965f9 # v4.0.0
+      # v4.0.0
+        uses: actions/checkout@72f2cec99f417b1a1c5e2e88945068983b7965f9
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@976d0ba04bcc49ba2c0b4e86991eee80d35136c0 # v4.0.0
+      # v4.0.0
+        uses: aws-actions/configure-aws-credentials@976d0ba04bcc49ba2c0b4e86991eee80d35136c0
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36 # v3.0.0
+      # v3.0.0
+        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36
         with:
           terraform_version: 1.6.6
           terraform_wrapper: false
@@ -83,13 +86,7 @@ jobs:
             echo "]"
           } > ../evidence/conftest-results.json
           # Decide pass/fail.
-          python3 -c '
-          import json, sys
-          d = json.load(open("../evidence/conftest-results.json"))
-          fails = sum(len(r.get("failures") or []) for results in d for r in results)
-          print(f"conftest failures: {fails}")
-          sys.exit(0 if fails == 0 else 1)
-          '
+          python3 -c 'import json, sys; d = json.load(open("../evidence/conftest-results.json")); fails = sum(len(r.get("failures") or []) for results in d for r in results); print(f"conftest failures: {fails}"); sys.exit(0 if fails == 0 else 1)'
 
       - name: tfsec scan
         id: tfsec
@@ -118,7 +115,9 @@ jobs:
 
       - name: Upload evidence artifact
         if: always()
-        uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4.0.0
+        # v4.0.0
+        uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392
+        
         with:
           name: grc-evidence-${{ github.run_id }}
           path: evidence/
@@ -126,9 +125,10 @@ jobs:
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v3.0.0
+        # v.3.0.0
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ github.event['pull_request']['number'] }}
           body: |
             ## GRC gate run #${{ github.run_id }}
 
