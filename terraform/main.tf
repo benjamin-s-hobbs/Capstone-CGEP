@@ -158,7 +158,8 @@ resource "aws_dynamodb_table" "intake" {
 ######################################################################
 
 resource "aws_s3_bucket" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  bucket = "${local.name_prefix}-uploads-${local.suffix}"
+  
 }
 
 resource "aws_s3_bucket_policy" "uploads" {
@@ -217,7 +218,7 @@ resource "aws_s3_bucket_public_access_block" "uploads" {
 # AU-3 / AU-6: Content of audit records + audit review. Adding and configuring a
 # log bucket.
 resource "aws_s3_bucket" "log" {
-  bucket = aws_s3_bucket.log.id
+  bucket = "${local.name_prefix}-log-${local.suffix}"
 }
 
 resource "aws_s3_bucket_policy" "log" {
@@ -488,8 +489,6 @@ resource "aws_lambda_function" "intake" {
       INTAKE_TABLE  = aws_dynamodb_table.intake.name
       UPLOAD_BUCKET = aws_s3_bucket.uploads.id
     }
-
-
   }
   tracing_config {
     mode = "Active"
@@ -506,20 +505,18 @@ resource "aws_lambda_function" "intake" {
   vpc_config {
     # Using the Private Subnet for Lambda 
     # (resource added with the help of AI system: "Gemini Pro 3.1")
-    subnet_ids         = [aws_subnet.private[*].id]
+    subnet_ids         = aws_subnet.private[*].id
     security_group_ids = [aws_security_group.lambda_sg.id]
   }
 }
 
 resource "aws_security_group" "lambda_sg" {
-  name        = "${local.name_prefix}-lambda-sg-${local.suffix}"
-  description = "Security group for the Intake Lambda function"
-    # Make sure to update this to point to your actual VPC resource ID!
+  name              = "${local.name_prefix}-lambda-sg-${local.suffix}"
+  description       = "Security group for the Intake Lambda function"
   vpc_id            = aws_vpc.main.id
   
-    # Outbound rule: Allows the Lambda function to make outbound network calls 
-  # (e.g., to internet endpoints, databases, or other AWS services).
-  egress {
+  # Outbound rule: Allows the Lambda function to make outbound network calls 
+    egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1" # "-1" means all protocols
@@ -576,7 +573,7 @@ resource "aws_api_gateway_integration" "lambda" {
   http_method                 = aws_api_gateway_method.intake_post.http_method
   integration_http_method     = "POST"
   type                        = "AWS_PROXY"
-  uri             = aws_lambda_function.intake.invoke_arn
+  uri                         = aws_lambda_function.intake.invoke_arn
 }
 
 # Deployment and Staging
