@@ -93,14 +93,14 @@ jobs:
         if: always()
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          tfsec . --format sarif --out ../evidence/tfsec.sarif || true
-          python3 -c 'import json, sys; d = json.load(open("../evidence/tfsec.sarif")); high = sum(1 for run in d.get("runs", []) for r in run.get("results", []) if (r.get("level") or "").lower() in ("error", "critical", "high")); print(f"tfsec high+critical: {high}"); sys.exit(0 if high == 0 else 1)'
+          tfsec . --format sarif --out /evidence/tfsec.sarif || true
+          python3 -c 'import json, sys; d = json.load(open("/evidence/tfsec.sarif")); high = sum(1 for run in d.get("runs", []) for r in run.get("results", []) if (r.get("level") or "").lower() in ("error", "critical", "high")); print(f"tfsec high+critical: {high}"); sys.exit(0 if high == 0 else 1)'
 
       - name: Copy plan into evidence
         if: always()
         run: |
-          cp ${{ env.TF_WORKING_DIR }}/plan.json ../evidence/plan.json
-          cp ${{ env.TF_WORKING_DIR }}/plan.txt  ../evidence/plan.txt
+          cp ${{ env.TF_WORKING_DIR }}/plan.json /evidence/plan.json
+          cp ${{ env.TF_WORKING_DIR }}/plan.txt  /evidence/plan.txt
 
       - name: Upload evidence artifact
         if: always()
