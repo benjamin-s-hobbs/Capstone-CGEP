@@ -507,7 +507,7 @@ resource "aws_lambda_function" "intake" {
     # Using the Private Subnet for Lambda 
     # (resource added with the help of AI system: "Gemini Pro 3.1")
     subnet_ids         = [aws_subnet.private[count.index]]
-    security_group_ids = [aws_security_group.lambda_sg.id]
+    security_group_ids = [aws_security_group.lambda_sg.[count.index]]
   }
 }
 
@@ -519,8 +519,7 @@ resource "aws_security_group" "lambda_sg" {
   count             = 2
   vpc_id            = aws_vpc.main.id
   
-  
-  # Outbound rule: Allows the Lambda function to make outbound network calls 
+    # Outbound rule: Allows the Lambda function to make outbound network calls 
   # (e.g., to internet endpoints, databases, or other AWS services).
   egress {
     from_port   = 0
