@@ -29,16 +29,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      # v4.0.0
+        uses: actions/checkout@72f2cec99f417b1a1c5e2e88945068983b7965f9
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@976d0ba04bcc49ba2c0b4e86991eee80d35136c0 # v4.0.0
+      # v4.0.0
+        uses: aws-actions/configure-aws-credentials@976d0ba04bcc49ba2c0b4e86991eee80d35136c0
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36 # v3.0.0
+      # v3.0.0
+        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36
         with:
           terraform_version: 1.6.6
           terraform_wrapper: false
@@ -83,53 +86,38 @@ jobs:
             echo "]"
           } > ../evidence/conftest-results.json
           # Decide pass/fail.
-          python3 -c '
-          import json, sys
-          d = json.load(open("../evidence/conftest-results.json"))
-          fails = sum(len(r.get("failures") or []) for results in d for r in results)
-          print(f"conftest failures: {fails}")
-          sys.exit(0 if fails == 0 else 1)
-          '
+          python3 -c 'import json, sys; d = json.load(open("../evidence/conftest-results.json")); fails = sum(len(r.get("failures") or []) for results in d for r in results); print(f"conftest failures: {fails}"); sys.exit(0 if fails == 0 else 1)'
 
       - name: tfsec scan
         id: tfsec
         if: always()
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          tfsec . --format sarif --out ../evidence/tfsec.sarif || true
-          # Only fail the job on HIGH or CRITICAL findings.
-          python3 -c '
-          import json, sys
-          d = json.load(open("../evidence/tfsec.sarif"))
-          high = 0
-          for run in d.get("runs", []):
-              for r in run.get("results", []):
-                  level = (r.get("level") or "").lower()
-                  if level in ("error", "critical", "high"):
-                      high += 1
-          print(f"tfsec high+critical: {high}")
-          sys.exit(0 if high == 0 else 1)
-          '
+          tfsec . --format sarif --out /evidence/tfsec.sarif || true
+          python3 -c 'import json, sys; d = json.load(open("/evidence/tfsec.sarif")); high = sum(1 for run in d.get("runs", []) for r in run.get("results", []) if (r.get("level") or "").lower() in ("error", "critical", "high")); print(f"tfsec high+critical: {high}"); sys.exit(0 if high == 0 else 1)'
 
       - name: Copy plan into evidence
         if: always()
         run: |
-          cp ${{ env.TF_WORKING_DIR }}/plan.json evidence/plan.json
-          cp ${{ env.TF_WORKING_DIR }}/plan.txt  evidence/plan.txt
+          cp ${{ env.TF_WORKING_DIR }}/plan.json /evidence/plan.json
+          cp ${{ env.TF_WORKING_DIR }}/plan.txt  /evidence/plan.txt
 
       - name: Upload evidence artifact
         if: always()
-        uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4.0.0
+        # v4.0.0
+        uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392
+        
         with:
           name: grc-evidence-${{ github.run_id }}
-          path: evidence/
+          path: ../evidence/
           retention-days: 90
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v3.0.0
+        # v.3.0.0
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ github.event['pull_request']['number'] }}
           body: |
             ## GRC gate run #${{ github.run_id }}
 
@@ -137,4 +125,4 @@ jobs:
             - tfsec:    `${{ steps.tfsec.outcome }}`
             - Evidence: see workflow artifacts (`grc-evidence-${{ github.run_id }}`).
 
-            Lab 4.4 will sign this bundle with Cosign and upload it to the Object Lock vault.
+#           Lab 4.4 will sign this bundle with Cosign and upload it to the Object Lock vault.
