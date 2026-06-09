@@ -127,7 +127,7 @@ resource "aws_kms_alias" "key" {
 ######################################################################
 
 resource "aws_dynamodb_table" "intake" {
-  name         = "local.table_name.id"
+  name         = "${local.name_prefix}-submissions-${local.suffix}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "submission_id"
 
@@ -163,7 +163,7 @@ resource "aws_s3_bucket" "uploads" {
 }
 
 resource "aws_s3_bucket_policy" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  bucket = "${local.name_prefix}-uploads-${local.suffix}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -187,7 +187,7 @@ resource "aws_s3_bucket_policy" "uploads" {
 # HIPAA 164.312(a)(2)(iv): (Addressing GAP-01) KMS keys are under customer custody 
 # and no longer defaults to AWS-managed keys. 
 resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  bucket = "${local.name_prefix}-uploads-${local.suffix}"
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
@@ -199,7 +199,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
 # CM-6: Versioning preserves prior object states for recovery and audit.
 #HIPAA 164.312(e)(1): (Addressing GAP-04) Versioning enabled. PHI overwrites recoverable.
 resource "aws_s3_bucket_versioning" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  bucket = "${local.name_prefix}-uploads-${local.suffix}"
   versioning_configuration {
     status = "Enabled"
   }
@@ -208,7 +208,7 @@ resource "aws_s3_bucket_versioning" "uploads" {
 
 # AC-3: Access control, explicit deny on every public access vector.
 resource "aws_s3_bucket_public_access_block" "uploads" {
-  bucket                  = aws_s3_bucket.uploads.id
+  bucket                  = "${local.name_prefix}-uploads-${local.suffix}"
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -222,7 +222,7 @@ resource "aws_s3_bucket" "log" {
 }
 
 resource "aws_s3_bucket_policy" "log" {
-  bucket = aws_s3_bucket.log.id
+  bucket = "${local.name_prefix}-log-${local.suffix}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -244,18 +244,18 @@ resource "aws_s3_bucket_policy" "log" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "log" {
-  bucket = aws_s3_bucket.log.id
+  bucket = "${local.name_prefix}-log-${local.suffix}"
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
 }
 resource "aws_s3_bucket_acl" "log" {
   depends_on = [aws_s3_bucket_ownership_controls.log]
-  bucket     = aws_s3_bucket.log.id
+  bucket     = "${local.name_prefix}-log-${local.suffix}"
   acl        = "log-delivery-write"
 }
 resource "aws_s3_bucket_server_side_encryption_configuration" "log" {
-  bucket = aws_s3_bucket.log.id
+  bucket = "${local.name_prefix}-log-${local.suffix}"
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
@@ -266,7 +266,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "log" {
 }
 
 resource "aws_s3_bucket_public_access_block" "log" {
-  bucket                  = aws_s3_bucket.log.id
+  bucket                  = "${local.name_prefix}-log-${local.suffix}"
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -275,23 +275,23 @@ resource "aws_s3_bucket_public_access_block" "log" {
 
 resource "aws_s3_bucket_logging" "uploads" {
   bucket        = aws_s3_bucket.uploads.id
-  target_bucket = aws_s3_bucket.log.id
+  target_bucket = "${local.name_prefix}-log-${local.suffix}"
   target_prefix = "access-logs/"
 }
 
 
 resource "aws_s3_bucket" "vault" {
-  bucket              = "${local.vault_name}"
+  bucket              = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
   object_lock_enabled = true        # MUST be set at bucket creation
 }
 
 resource "aws_s3_bucket_versioning" "vault" {
-  bucket = aws_s3_bucket.vault.id
+  bucket = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
   versioning_configuration { status = "Enabled" }   # Object Lock requires versioning
 }
 
 resource "aws_s3_bucket_object_lock_configuration" "vault" {
-  bucket = aws_s3_bucket.vault.id
+  bucket = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
 
   rule {
     default_retention {
@@ -303,13 +303,13 @@ resource "aws_s3_bucket_object_lock_configuration" "vault" {
   depends_on = [aws_s3_bucket_versioning.vault]
 }
 resource "aws_s3_bucket_server_side_encryption_configuration" "vault" {
-  bucket = aws_s3_bucket.vault.id
+  bucket = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
   rule {
     apply_server_side_encryption_by_default { sse_algorithm = "aws:kms" }
   }
 }
 resource "aws_s3_bucket_public_access_block" "vault" {
-  bucket                  = aws_s3_bucket.vault.id
+  bucket                  = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -319,7 +319,7 @@ resource "aws_s3_bucket_public_access_block" "vault" {
 # Refuse bucket deletion from anyone except the account root.
 data "aws_caller_identity" "current" {}
 resource "aws_s3_bucket_policy" "vault" {
-  bucket = aws_s3_bucket.vault.id
+  bucket = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
