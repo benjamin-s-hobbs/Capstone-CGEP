@@ -506,17 +506,15 @@ resource "aws_lambda_function" "intake" {
   vpc_config {
     # Using the Private Subnet for Lambda 
     # (resource added with the help of AI system: "Gemini Pro 3.1")
-    subnet_ids         = [aws_subnet.private[count.index]]
-    security_group_ids = [aws_security_group.lambda_sg[count.index]]
+    subnet_ids         = [aws_subnet.private[*].id]
+    security_group_ids = [aws_security_group.lambda_sg.id]
   }
 }
 
 resource "aws_security_group" "lambda_sg" {
   name        = "${local.name_prefix}-lambda-sg-${local.suffix}"
   description = "Security group for the Intake Lambda function"
-  
-  # Make sure to update this to point to your actual VPC resource ID!
-  count             = 2
+    # Make sure to update this to point to your actual VPC resource ID!
   vpc_id            = aws_vpc.main.id
   
     # Outbound rule: Allows the Lambda function to make outbound network calls 
@@ -527,7 +525,6 @@ resource "aws_security_group" "lambda_sg" {
     protocol    = "-1" # "-1" means all protocols
     cidr_blocks = ["0.0.0.0/0"]
   }
-
   tags = {
     Name = "${local.name_prefix}-lambda-sg-${local.suffix}"
   }
