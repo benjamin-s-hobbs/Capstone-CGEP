@@ -1,6 +1,6 @@
 # outputs.tf
-output "api_url" {
-  value       = "${aws_apigatewayv2_api.intake.api_endpoint}/intake"
+output "api_uri" {
+  value       = aws_lambda_function.intake.invoke_arn
   description = "POST /intake endpoint."
 }
 

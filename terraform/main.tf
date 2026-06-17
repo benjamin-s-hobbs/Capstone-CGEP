@@ -127,7 +127,7 @@ resource "aws_kms_alias" "key" {
 ######################################################################
 
 resource "aws_dynamodb_table" "intake" {
-  name         = local.table_name.id
+  name         = "${local.name_prefix}-submissions-${local.suffix}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "submission_id"
 
@@ -158,11 +158,12 @@ resource "aws_dynamodb_table" "intake" {
 ######################################################################
 
 resource "aws_s3_bucket" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  bucket = "${local.name_prefix}-uploads-${local.suffix}"
+  
 }
 
 resource "aws_s3_bucket_policy" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  bucket = "${local.name_prefix}-uploads-${local.suffix}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -186,7 +187,7 @@ resource "aws_s3_bucket_policy" "uploads" {
 # HIPAA 164.312(a)(2)(iv): (Addressing GAP-01) KMS keys are under customer custody 
 # and no longer defaults to AWS-managed keys. 
 resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  bucket = "${local.name_prefix}-uploads-${local.suffix}"
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
@@ -198,7 +199,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
 # CM-6: Versioning preserves prior object states for recovery and audit.
 #HIPAA 164.312(e)(1): (Addressing GAP-04) Versioning enabled. PHI overwrites recoverable.
 resource "aws_s3_bucket_versioning" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  bucket = "${local.name_prefix}-uploads-${local.suffix}"
   versioning_configuration {
     status = "Enabled"
   }
@@ -207,7 +208,7 @@ resource "aws_s3_bucket_versioning" "uploads" {
 
 # AC-3: Access control, explicit deny on every public access vector.
 resource "aws_s3_bucket_public_access_block" "uploads" {
-  bucket                  = aws_s3_bucket.uploads.id
+  bucket                  = "${local.name_prefix}-uploads-${local.suffix}"
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -217,11 +218,11 @@ resource "aws_s3_bucket_public_access_block" "uploads" {
 # AU-3 / AU-6: Content of audit records + audit review. Adding and configuring a
 # log bucket.
 resource "aws_s3_bucket" "log" {
-  bucket = aws_s3_bucket.log.id
+  bucket = "${local.name_prefix}-log-${local.suffix}"
 }
 
 resource "aws_s3_bucket_policy" "log" {
-  bucket = aws_s3_bucket.log.id
+  bucket = "${local.name_prefix}-log-${local.suffix}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -243,18 +244,18 @@ resource "aws_s3_bucket_policy" "log" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "log" {
-  bucket = aws_s3_bucket.log.id
+  bucket = "${local.name_prefix}-log-${local.suffix}"
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
 }
 resource "aws_s3_bucket_acl" "log" {
   depends_on = [aws_s3_bucket_ownership_controls.log]
-  bucket     = aws_s3_bucket.log.id
+  bucket     = "${local.name_prefix}-log-${local.suffix}"
   acl        = "log-delivery-write"
 }
 resource "aws_s3_bucket_server_side_encryption_configuration" "log" {
-  bucket = aws_s3_bucket.log.id
+  bucket = "${local.name_prefix}-log-${local.suffix}"
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
@@ -265,7 +266,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "log" {
 }
 
 resource "aws_s3_bucket_public_access_block" "log" {
-  bucket                  = aws_s3_bucket.log.id
+  bucket                  = "${local.name_prefix}-log-${local.suffix}"
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -274,23 +275,23 @@ resource "aws_s3_bucket_public_access_block" "log" {
 
 resource "aws_s3_bucket_logging" "uploads" {
   bucket        = aws_s3_bucket.uploads.id
-  target_bucket = aws_s3_bucket.log.id
+  target_bucket = "${local.name_prefix}-log-${local.suffix}"
   target_prefix = "access-logs/"
 }
 
 
 resource "aws_s3_bucket" "vault" {
-  bucket              = "${local.vault_name}"
+  bucket              = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
   object_lock_enabled = true        # MUST be set at bucket creation
 }
 
 resource "aws_s3_bucket_versioning" "vault" {
-  bucket = aws_s3_bucket.vault.id
+  bucket = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
   versioning_configuration { status = "Enabled" }   # Object Lock requires versioning
 }
 
 resource "aws_s3_bucket_object_lock_configuration" "vault" {
-  bucket = aws_s3_bucket.vault.id
+  bucket = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
 
   rule {
     default_retention {
@@ -302,13 +303,13 @@ resource "aws_s3_bucket_object_lock_configuration" "vault" {
   depends_on = [aws_s3_bucket_versioning.vault]
 }
 resource "aws_s3_bucket_server_side_encryption_configuration" "vault" {
-  bucket = aws_s3_bucket.vault.id
+  bucket = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
   rule {
     apply_server_side_encryption_by_default { sse_algorithm = "aws:kms" }
   }
 }
 resource "aws_s3_bucket_public_access_block" "vault" {
-  bucket                  = aws_s3_bucket.vault.id
+  bucket                  = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -318,7 +319,7 @@ resource "aws_s3_bucket_public_access_block" "vault" {
 # Refuse bucket deletion from anyone except the account root.
 data "aws_caller_identity" "current" {}
 resource "aws_s3_bucket_policy" "vault" {
-  bucket = aws_s3_bucket.vault.id
+  bucket = "${local.name_prefix}-grc-evidence-vault-${local.suffix}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -337,7 +338,6 @@ resource "aws_s3_bucket_policy" "vault" {
       }
     },
     { 
-    Statement = [{
         Sid       = "EnforceSecureTransport"
         Effect    = "Deny"
         Principal = "*"
@@ -351,11 +351,10 @@ resource "aws_s3_bucket_policy" "vault" {
             "aws:SecureTransport" = "false"
           }
         }
-      }]
-    }]
+      }   
+    ]
   })
 }
-
 
 # (Intentionally omitted: SSE-KMS encryption with a customer CMK,
 #  bucket policy enforcing aws:SecureTransport, lifecycle.
@@ -506,10 +505,28 @@ resource "aws_lambda_function" "intake" {
   vpc_config {
     # Using the Private Subnet for Lambda 
     # (resource added with the help of AI system: "Gemini Pro 3.1")
-    subnet_ids         = [aws_subnet.private.id]
+    subnet_ids         = aws_subnet.private[*].id
     security_group_ids = [aws_security_group.lambda_sg.id]
   }
 }
+
+resource "aws_security_group" "lambda_sg" {
+  name              = "${local.name_prefix}-lambda-sg-${local.suffix}"
+  description       = "Security group for the Intake Lambda function"
+  vpc_id            = aws_vpc.main.id
+  
+  # Outbound rule: Allows the Lambda function to make outbound network calls 
+    egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1" # "-1" means all protocols
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    Name = "${local.name_prefix}-lambda-sg-${local.suffix}"
+  }
+}
+
 resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
   role       = aws_iam_role.lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
@@ -556,7 +573,7 @@ resource "aws_api_gateway_integration" "lambda" {
   http_method                 = aws_api_gateway_method.intake_post.http_method
   integration_http_method     = "POST"
   type                        = "AWS_PROXY"
-  uri             = aws_lambda_function.intake.invoke_arn
+  uri                         = aws_lambda_function.intake.invoke_arn
 }
 
 # Deployment and Staging
@@ -574,12 +591,6 @@ resource "aws_api_gateway_deployment" "intake" {
   lifecycle {
     create_before_destroy = true
   }
-}
-
-resource "aws_apigatewayv2_route" "intake" {
-  api_id    = aws_apigatewayv2_api.intake.id
-  route_key = "POST /intake"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_api_gateway_stage" "prod" {
